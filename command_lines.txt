@@ -1,0 +1,13 @@
+python Blockchain.py 5000
+
+python Blockchain.py 5001
+
+curl http://localhost:5000/mine 
+
+curl http://localhost:5000/Blockchain
+
+To tell the second node that there is a neighbor node, use the following command:
+curl -H "Content-type: application/json" -d "{\"nodes\":[\"http://127.0.0.1:5000\"]}" -X POST http://localhost:5001/nodes/add_nodes
+
+----
+curl -X POST -H "Content-Type: application/json" -d "{\"sender\": \"04d0988bfa799f7d7ef9ab3de97ef481\",\"recipient\": \"cd0f75d2367ad456607647edde665d6f\",\"amount\": 5}" "http://localhost:5000/transactions/new"
