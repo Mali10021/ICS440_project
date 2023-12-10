@@ -1,4 +1,5 @@
 # import all the necessary libraries and modules
+# pip install web3
 
 import hashlib
 import json
@@ -6,9 +7,37 @@ import sys
 from time import time
 from urllib.parse import urlparse
 from uuid import uuid4
+from web3 import Web3
 
 import requests
 from flask import Flask, jsonify, request
+
+
+class TransactionInput:
+    def __init__(self, transaction_output_id):
+        self.transaction_output_id = transaction_output_id
+
+import hashlib
+
+class TransactionOutput:
+    def __init__(self, recipient, value):
+        self.recipient = recipient
+        self.value = value
+        self.id = self.calculate_hash(recipient, value)
+
+    @staticmethod
+    def calculate_hash(recipient, value):
+        return hashlib.sha256((str(recipient) + str(value)).encode()).hexdigest()
+
+
+class Transaction:
+    def __init__(self, sender, recipient, value, inputs):
+        self.sender = sender
+        self.recipient = recipient
+        self.value = value
+        self.inputs = inputs
+        self.outputs = []
+
 
 
 def encrypt(message, multiple):
@@ -22,6 +51,50 @@ def decrypt(message, multiple):
             inverse = i
             break
     return "".join(chr((ord(char) * inverse) % 256) for char in str(message))
+
+
+
+# Connect to a local Ethereum node or a service like Infura
+w3 = Web3(Web3.HTTPProvider('http://127.0.0.1:8545')) # Replace with your node's address
+
+# Check if the connection is successful
+print(w3.is_connected)
+
+# Your original address (in lowercase)
+original_address = "0x8739203Ca1e71F06f7F057D9d56E2aA49B86d673"
+
+# Convert to checksum address
+account = Web3.to_checksum_address(original_address)
+
+# Now you can use checksum_address in your code
+print(account)
+balance = w3.eth.get_balance(account)
+print(w3.from_wei(balance, 'ether'))
+current_block = w3.eth.get_block('latest')
+print(f"Current block gas limit: {current_block.gasLimit}")
+print(w3.eth.chain_id) 
+
+
+# Build a transaction
+
+transaction = {
+    'to': '0x4229d9D82A8A7622470718ca3D8bc55395E51BA8',
+    'value': w3.to_wei(30, 'ether'),
+    'gas': 21000,
+    'gasPrice': w3.to_wei('0', 'wei'),
+    'nonce': w3.eth.get_transaction_count(account)+11,
+    'chainId': 1337
+}
+
+# Sign the transaction with your private key
+signed_tx = w3.eth.account.sign_transaction(transaction, '80f7d3529db401f9e7418034ae3df2f03767d2e226f574aabfb4408dc57e49e8')
+
+# Send the transaction
+tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+print(tx_hash.hex())
+
+
+
 
 
 # noinspection PyMethodMayBeStatic
@@ -50,10 +123,21 @@ class Blockchain(object):
 
         self.multiple = 7
 
+        self.utxos = {}  # Dictionary to keep track of UTXOs
+
         # create the genesis block with a specific fixed hash
         # of previous block genesis block starts with index 0
         hash, nonce, time_spent = self.proof_of_work(0, 0, [])
         self.append_block(hash, nonce, time_spent, 0)
+
+
+    def create_transaction(self, sender, recipient, value, inputs):
+
+        transaction = Transaction(sender, recipient, value, inputs)
+        # Validate inputs, check if the sender has enough in the UTXOs
+        # Remove used UTXOs from self.utxos
+        # Create new UTXOs for the recipient and add them to self.utxos
+        return transaction
 
     def adjust_difficulty(self):
         mean_time = sum(block['time_spent'] for block in self.chain[-4:]) / min(4, len(self.chain))
@@ -294,5 +378,32 @@ def sync():
     return jsonify(response), 200
 
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(sys.argv[1]))
+# Recipient's Ethereum address
+recipient_address = '0x4229d9D82A8A7622470718ca3D8bc55395E51BA8'
+sender_address = '0x8739203Ca1e71F06f7F057D9d56E2aA49B86d673'
+
+# Get the balance of the recipient's address
+balance_wei = w3.eth.get_balance(recipient_address)
+balance_weis = w3.eth.get_balance(sender_address)
+
+# Convert the balance from Wei to Ether
+balance_ether = w3.from_wei(balance_wei, 'ether')
+balance_ethers = w3.from_wei(balance_weis, 'ether')
+
+
+print(f"Balance of {recipient_address}: {balance_ether} Ether")
+print(f"Balance of {sender_address}: {balance_ethers} Ether")
+transactions = w3.eth.get_block_transaction_count("0x8739203Ca1e71F06f7F057D9d56E2aA49B86d673")
+print(transactions)
+
+# # Loop through transactions and print details
+# for tx_hash in transactions:
+#     tx = w3.eth.get_transaction(tx_hash)
+#     print(f"Transaction Hash: {tx['hash'].hex()}")
+#     print(f"From: {tx['from']}")
+#     print(f"To: {tx['to']}")
+#     print(f"Value (ETH): {w3.from_wei(tx['value'], 'ether')}")
+#     print(f"Gas Used: {tx['gas']}")
+#     print(f"Gas Price (Gwei): {w3.from_wei(tx['gasPrice'], 'gwei')}")
+#     print(f"Block Number: {tx['blockNumber']}")
+#     print(f"Block Hash: {tx['blockHash'].hex()}\n")

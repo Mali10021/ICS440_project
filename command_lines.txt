@@ -11,3 +11,19 @@ curl -H "Content-type: application/json" -d "{\"nodes\":[\"http://127.0.0.1:5000
 
 ----
 curl -X POST -H "Content-Type: application/json" -d "{\"sender\": \"04d0988bfa799f7d7ef9ab3de97ef481\",\"recipient\": \"cd0f75d2367ad456607647edde665d6f\",\"amount\": 5}" "http://localhost:5000/transactions/new"
+
+
+Connect to geth dev mode
+geth --dev --http --http.api eth,web3,net --http.corsdomain "http://remix.ethereum.org
+
+geth --dev --http --http.api eth,web3,net --http.corsdomain "http://remix.ethereum.org" --http.addr 127.0.0.1 --http.port 8545
+
+
+then
+In another console:
+geth attach ipc:/var/folders/9k/6t4nqhx12_s_fvtb8gbvhd780000gn/T/geth.ipc
+
+
+to add fake money
+> eth.sendTransaction({from: eth.coinbase, to: "0x8739203Ca1e71F06f7F057D9d56E2aA49B86d673", value: web3.toWei(50, "ether")})
+
